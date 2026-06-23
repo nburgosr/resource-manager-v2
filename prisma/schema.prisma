@@ -1,0 +1,155 @@
+// Esquema de datos — App de gestión de asignaciones de consultoría
+// Nota: SQLite no soporta enums en Prisma. Los campos "enumerables" se modelan
+// como String y sus valores permitidos se definen en src/lib/constants.ts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Usuarios de la aplicación. Por ahora: ADMIN (lee/escribe) y VIEWER (solo lectura).
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String
+  role         String // ADMIN | VIEWER
+  passwordHash String
+  createdAt    DateTime   @default(now())
+  auditLogs    AuditLog[]
+}
+
+// Consultores del equipo. rank cubre tanto consultoría como gestión/ejecutivos.
+model Consultant {
+  id        String   @id @default(cuid())
+  name      String
+  // STAFF | SENIOR | SENIOR_ESPECIALISTA | MANAGER | SENIOR_MANAGER | ASSOCIATED_PARTNER | PARTNER
+  rank      String
+  status    String   @default("ACTIVE") // ACTIVE | INACTIVE
+  createdAt DateTime @default(now())
+
+  assignments Assignment[]
+  leadOf      EngagementLead[]
+  partnerOf   Engagement[]     @relation("EngagementPartner")
+}
+
+// Proyectos con cliente, iniciativas internas y propuestas comerciales.
+model Engagement {
+  id String @id @default(cuid())
+
+  name String
+  // CLIENT_PROJECT | INTERNAL_WITH_CODE | COMMERCIAL_PROPOSAL | INTERNAL_NO_CODE
+  type           String
+  engagementCode String?
+  status         String  @default("ACTIVE") // ACTIVE | CLOSED
+  startDate      DateTime
+  endDate        DateTime
+
+  // Único Partner o Associated Partner responsable.
+  partnerId String?
+  partner   Consultant? @relation("EngagementPartner", fields: [partnerId], references: [id])
+
+  // Uno o más Managers / Senior Managers a cargo.
+  leads             EngagementLead[]
+  assignments       Assignment[]
+  staffingBase      StaffingBase[]
+  staffingOverrides StaffingOverride[]
+
+  createdAt DateTime @default(now())
+}
+
+// Managers / Senior Managers a cargo de un engagement (relación N:N).
+model EngagementLead {
+  id           String @id @default(cuid())
+  engagementId String
+  consultantId String
+
+  engagement Engagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  consultant Consultant @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+
+  @@unique([engagementId, consultantId])
+}
+
+// Asignación de horas de un consultor a un engagement en una semana concreta.
+// weekStart = lunes de la semana (00:00 UTC).
+model Assignment {
+  id           String   @id @default(cuid())
+  consultantId String
+  engagementId String
+  weekStart    DateTime
+  hours        Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  consultant Consultant @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+  engagement Engagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+
+  @@unique([consultantId, engagementId, weekStart])
+  @@index([weekStart])
+}
+
+// Necesidad de perfiles BASE (por defecto) por rank para un engagement, con su
+// propia ventana de vigencia (por defecto, las fechas del engagement).
+model StaffingBase {
+  id           String   @id @default(cuid())
+  engagementId String
+  rank         String
+  persons      Int      @default(0)
+  hours        Float    @default(0)
+  startDate    DateTime
+  endDate      DateTime
+
+  engagement Engagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+
+  @@unique([engagementId, rank])
+}
+
+// Sobrescritura de la necesidad de perfiles para una semana puntual.
+model StaffingOverride {
+  id           String   @id @default(cuid())
+  engagementId String
+  weekStart    DateTime
+  rank         String
+  persons      Int      @default(0)
+  hours        Float    @default(0)
+
+  engagement Engagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+
+  @@unique([engagementId, weekStart, rank])
+  @@index([weekStart])
+}
+
+// Calendario de feriados que descuentan capacidad horaria.
+model Holiday {
+  id   String   @id @default(cuid())
+  date DateTime @unique
+  name String
+}
+
+// Snapshot semanal del estado completo de asignaciones (JSON serializado).
+model WeeklySnapshot {
+  id        String   @id @default(cuid())
+  weekStart DateTime
+  payload   String // JSON
+  createdAt DateTime @default(now())
+
+  @@index([weekStart])
+}
+
+// Log de auditoría: quién hizo qué cambio y cuándo.
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String // CREATE | UPDATE | DELETE
+  entity    String
+  entityId  String
+  details   String? // JSON
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+}
