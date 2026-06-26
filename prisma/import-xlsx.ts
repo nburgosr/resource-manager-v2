@@ -114,8 +114,6 @@ async function main() {
     }
     return !String(r[0]).startsWith("Applied");
   });
-      !String(r[0]).startsWith("Applied")
-  );
 
   // ---------------------------------------------------------------------------
   // 1. Consultores
