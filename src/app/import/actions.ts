@@ -15,9 +15,18 @@ export async function uploadXlsx(formData: FormData): Promise<void> {
   const buffer = await file.arrayBuffer();
   const wb = XLSX.read(new Uint8Array(buffer), { type: "array" });
   const ws = wb.Sheets["Export"];
-  if (!ws) throw new Error('Hoja "Export" no encontrada en el archivo.');
 
-  const data = parseHHProgram(ws);
+  if (!ws) {
+    redirect("/import?error=" + encodeURIComponent('El archivo no contiene la hoja "Export". Asegúrate de exportar el HH Program en el formato correcto.'));
+  }
+
+  let data;
+  try {
+    data = parseHHProgram(ws);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Error al leer el archivo.";
+    redirect("/import?error=" + encodeURIComponent(msg));
+  }
 
   const pending = await prisma.pendingImport.create({
     data: { filename: file.name, payload: JSON.stringify(data) },

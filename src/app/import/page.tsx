@@ -11,9 +11,14 @@ function fmtDate(iso: string) {
   );
 }
 
-export default async function ImportPage() {
+export default async function ImportPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   await requireAdmin();
 
+  const { error } = await searchParams;
   const pending = await prisma.pendingImport.findMany({ orderBy: { createdAt: "desc" } });
 
   return (
@@ -23,6 +28,13 @@ export default async function ImportPage() {
         Sube un archivo HH&nbsp;Program en formato xlsx para previsualizar los cambios antes de
         aplicarlos.
       </p>
+
+      {error && (
+        <div className="alert alert-error" role="alert">
+          <strong>Archivo no admitido</strong>
+          <p style={{ whiteSpace: "pre-wrap" }}>{error}</p>
+        </div>
+      )}
 
       <section>
         <h2>Cargar archivo</h2>

@@ -77,7 +77,7 @@ export default async function ImportPreviewPage({
 
   const xlsxConsultantNames = data.consultants.map((c) => c.name);
   const xlsxEngagementNames = data.engagements.map((e) => e.name);
-  const engagementNameByClientKey = new Map(data.engagements.map((e) => [e.clientKey, e.name]));
+  const engagementNameByKey = new Map(data.engagements.map((e) => [e.engagementKey, e.name]));
 
   const [dbConsultants, dbEngagements, dbAssignments, dbAbsences] = await Promise.all([
     prisma.consultant.findMany(),
@@ -142,7 +142,7 @@ export default async function ImportPreviewPage({
   const assignmentChanges: AssignmentChange[] = [];
   for (const a of data.assignments) {
     const consultantId = dbConsultantByName.get(a.consultantName)?.id;
-    const engagementName = engagementNameByClientKey.get(a.clientKey) ?? a.clientKey;
+    const engagementName = engagementNameByKey.get(a.engagementKey) ?? a.engagementKey;
     const engagementId = dbEngagementByName.get(engagementName)?.id;
 
     if (!consultantId || !engagementId) {

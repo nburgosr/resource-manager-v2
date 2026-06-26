@@ -33,7 +33,7 @@ export async function confirmImport(formData: FormData): Promise<void> {
   }
 
   // ── 2. Engagements ────────────────────────────────────────────────────────
-  const engagementIdByClientKey = new Map<string, string>(); // clientKey → dbId
+  const engagementIdByKey = new Map<string, string>(); // engagementKey → dbId
   for (const e of data.engagements) {
     const existing = await prisma.engagement.findFirst({ where: { name: e.name } });
     const startDate = new Date(e.firstWeek);
@@ -48,12 +48,12 @@ export async function confirmImport(formData: FormData): Promise<void> {
           endDate: existing.endDate > endDate ? existing.endDate : endDate,
         },
       });
-      engagementIdByClientKey.set(e.clientKey, existing.id);
+      engagementIdByKey.set(e.engagementKey, existing.id);
     } else {
       const created = await prisma.engagement.create({
         data: { name: e.name, type: e.type, engagementCode: e.code, startDate, endDate },
       });
-      engagementIdByClientKey.set(e.clientKey, created.id);
+      engagementIdByKey.set(e.engagementKey, created.id);
     }
   }
 
@@ -63,7 +63,7 @@ export async function confirmImport(formData: FormData): Promise<void> {
 
   for (const a of data.assignments) {
     const consultantId = consultantIdMap.get(a.consultantName);
-    const engagementId = engagementIdByClientKey.get(a.clientKey);
+    const engagementId = engagementIdByKey.get(a.engagementKey);
     if (!consultantId || !engagementId) continue;
 
     const weekStart = new Date(a.weekStart);

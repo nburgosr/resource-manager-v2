@@ -1,5 +1,10 @@
 /**
- * Parser puro del archivo HH Program (xlsx) de EY.
+ * Parser puro del archivo HH Program (xlsx) de EY — formato 2027.
+ * Columnas de cabecera (fila 3):
+ *   col[0] Ranks FY | col[1] Resource Name | col[2] Engagement category
+ *   col[3] Client   | col[4] GFIS engagement name | col[5] Engagement number
+ *   col[6..N-1] semanas | col[N] Total
+ *
  * No tiene dependencias de Prisma; solo lee y estructura los datos.
  * Reutilizado por el script CLI (prisma/import-xlsx.ts) y el módulo web de importación.
  */
@@ -16,17 +21,18 @@ export interface XlsxConsultant {
 }
 
 export interface XlsxEngagement {
-  clientKey: string;   // clave original (ej. "Enel Chile S.A. - 12474357")
-  name: string;        // nombre limpio
-  code: string | null; // código de engagement o null
-  type: string;        // CLIENT_PROJECT | INTERNAL_WITH_CODE | INTERNAL_NO_CODE
-  firstWeek: string;   // ISO date del primer lunes con horas
-  lastWeek: string;    // ISO date del último lunes con horas
+  engagementKey: string; // clave interna: "<GFIS name>|<code>"
+  clientName: string;    // nombre del cliente (col Client)
+  name: string;          // nombre del engagement (col GFIS engagement name)
+  code: string | null;   // código de engagement (col Engagement number) o null
+  type: string;          // CLIENT_PROJECT | INTERNAL_WITH_CODE | INTERNAL_NO_CODE
+  firstWeek: string;     // ISO date del primer lunes con horas
+  lastWeek: string;      // ISO date del último lunes con horas
 }
 
 export interface XlsxAssignment {
   consultantName: string; // nombre normalizado
-  clientKey: string;      // clave de engagement
+  engagementKey: string;  // clave del engagement
   weekStart: string;      // ISO date YYYY-MM-DD
   hours: number;
 }
@@ -44,6 +50,21 @@ export interface ParsedXlsxData {
   absences: XlsxAbsence[];
   weekRange: { start: string; end: string };
 }
+
+// ---------------------------------------------------------------------------
+// Cabeceras esperadas en el nuevo formato (fila 3, índices 0-5)
+// ---------------------------------------------------------------------------
+
+const EXPECTED_HEADERS = [
+  "Ranks FY",
+  "Resource Name",
+  "Engagement category",
+  "Client",
+  "GFIS engagement name",
+  "Engagement number",
+] as const;
+
+const WEEK_COL_START = 6;
 
 // ---------------------------------------------------------------------------
 // Tablas de mapeo
@@ -81,12 +102,6 @@ export function normalizeConsultantName(raw: string): string {
   return parts.length === 2 ? `${parts[1]} ${parts[0]}` : raw;
 }
 
-function parseClientName(raw: string): { name: string; code: string | null } {
-  const match = raw.match(/^(.+?)\s+-\s+([A-Z0-9]+)$/);
-  if (match) return { name: match[1].trim(), code: match[2].trim() };
-  return { name: raw.trim(), code: null };
-}
-
 function engagementType(category: string, code: string | null): string {
   if (category === "External Engagement") return "CLIENT_PROJECT";
   return code ? "INTERNAL_WITH_CODE" : "INTERNAL_NO_CODE";
@@ -102,86 +117,106 @@ export function parseHHProgram(ws: XLSX.WorkSheet): ParsedXlsxData {
     defval: null,
   });
 
-  const fyRow = rows[0];
-  const semanaRow = rows[2];
-  const WEEK_COL_START = 4;
-  const WEEK_COL_END = (rows[3] as (string | number | null)[]).length - 2;
+  // ── Validar formato ────────────────────────────────────────────────────────
+  const headerRow = rows[3] as (string | null)[];
+  for (let i = 0; i < EXPECTED_HEADERS.length; i++) {
+    if (headerRow[i] !== EXPECTED_HEADERS[i]) {
+      throw new Error(
+        `Formato de archivo no admitido. ` +
+        `Se esperaba la columna ${i + 1} con el valor "${EXPECTED_HEADERS[i]}", ` +
+        `pero se encontró "${headerRow[i] ?? "(vacío)"}".\n` +
+        `Asegúrate de exportar el archivo HH Program con el formato actual de EY (6 columnas de cabecera).`
+      );
+    }
+  }
 
-  // Columnas de semana
+  const fyRow    = rows[0] as (string | null)[];
+  const semanaRow = rows[2] as (string | null)[];
+  const WEEK_COL_END = headerRow.length - 2; // excluye columna "Total"
+
+  // ── Columnas de semana ────────────────────────────────────────────────────
   const weekDates: string[] = [];
   for (let col = WEEK_COL_START; col <= WEEK_COL_END; col++) {
-    const fy = fyRow[col] as string;
-    const semana = semanaRow[col] as string;
+    const fy     = fyRow[col];
+    const semana = semanaRow[col];
     if (semana && fy) weekDates.push(parseWeekDate(semana, fy));
   }
 
-  // Filas de detalle (excluye subtotales y cabeceras aplicadas)
-  const detailRows = rows.slice(4).filter(
-    (r) =>
-      r[0] && r[1] && r[2] && r[3] &&
-      r[3] !== "Total" && r[1] !== "Total" && r[2] !== "Total" &&
-      !String(r[0]).startsWith("Applied")
-  );
+  if (weekDates.length === 0) {
+    throw new Error("No se encontraron columnas de semana en el archivo.");
+  }
 
-  // --- Consultores ---
+  // ── Filas de detalle (leaf rows) ──────────────────────────────────────────
+  // Leaf row: las 6 columnas de cabecera tienen valor y ninguna es "Total"
+  const detailRows = rows.slice(4).filter((r) => {
+    for (let i = 0; i < WEEK_COL_START; i++) {
+      if (!r[i] || String(r[i]) === "Total") return false;
+    }
+    return !String(r[0]).startsWith("Applied");
+  });
+
+  // ── Consultores ───────────────────────────────────────────────────────────
   const consultantMap = new Map<string, XlsxConsultant>();
   for (const row of detailRows) {
-    const xlsxName = row[1] as string;
+    const xlsxName = String(row[1]);
     if (!consultantMap.has(xlsxName)) {
       consultantMap.set(xlsxName, {
         xlsxName,
         name: normalizeConsultantName(xlsxName),
-        rank: RANK_MAP[row[0] as string] ?? "STAFF",
+        rank: RANK_MAP[String(row[0])] ?? "STAFF",
       });
     }
   }
 
-  // --- Engagements ---
+  // ── Engagements ───────────────────────────────────────────────────────────
   const engagementMap = new Map<string, XlsxEngagement>();
   for (const row of detailRows) {
-    const category = row[2] as string;
+    const category       = String(row[2]);
     if (category === "Absence Engagement") continue;
-    const clientKey = row[3] as string;
-    const { name, code } = parseClientName(clientKey);
-    const type = engagementType(category, code);
+
+    const clientName     = String(row[3]);
+    const engagementName = String(row[4]);
+    const rawCode        = row[5];
+    const code           = rawCode !== null ? String(rawCode) : null;
+    const engagementKey  = `${engagementName}|${code ?? ""}`;
+    const type           = engagementType(category, code);
 
     for (let i = 0; i < weekDates.length; i++) {
       const rawHours = row[WEEK_COL_START + i] as number | null;
       if (!rawHours || rawHours <= 0) continue;
       const week = weekDates[i];
-      const entry = engagementMap.get(clientKey);
+      const entry = engagementMap.get(engagementKey);
       if (!entry) {
-        engagementMap.set(clientKey, { clientKey, name, code, type, firstWeek: week, lastWeek: week });
+        engagementMap.set(engagementKey, { engagementKey, clientName, name: engagementName, code, type, firstWeek: week, lastWeek: week });
       } else {
         if (week < entry.firstWeek) entry.firstWeek = week;
-        if (week > entry.lastWeek) entry.lastWeek = week;
+        if (week > entry.lastWeek)  entry.lastWeek  = week;
       }
     }
   }
 
-  // --- Asignaciones + ausencias ---
+  // ── Asignaciones + ausencias ──────────────────────────────────────────────
   const assignments: XlsxAssignment[] = [];
   const absenceAccum = new Map<string, XlsxAbsence>();
 
   for (const row of detailRows) {
-    const xlsxName = row[1] as string;
-    const category = row[2] as string;
-    const clientKey = row[3] as string;
-    const consultantName = normalizeConsultantName(xlsxName);
+    const consultantName = normalizeConsultantName(String(row[1]));
+    const category       = String(row[2]);
+    const engagementKey  = `${String(row[4])}|${row[5] !== null ? String(row[5]) : ""}`;
 
     for (let i = 0; i < weekDates.length; i++) {
       const rawHours = row[WEEK_COL_START + i] as number | null;
       if (!rawHours || rawHours <= 0) continue;
-      const hours = Math.round(rawHours * 10) / 10;
+      const hours     = Math.round(rawHours * 10) / 10;
       const weekStart = weekDates[i];
 
       if (category === "Absence Engagement") {
-        const key = `${consultantName}|${weekStart}`;
+        const key      = `${consultantName}|${weekStart}`;
         const existing = absenceAccum.get(key);
         if (existing) existing.hours = Math.round((existing.hours + hours) * 10) / 10;
         else absenceAccum.set(key, { consultantName, weekStart, hours });
       } else {
-        assignments.push({ consultantName, clientKey, weekStart, hours });
+        assignments.push({ consultantName, engagementKey, weekStart, hours });
       }
     }
   }
@@ -192,8 +227,8 @@ export function parseHHProgram(ws: XLSX.WorkSheet): ParsedXlsxData {
     assignments,
     absences: [...absenceAccum.values()],
     weekRange: {
-      start: weekDates[0] ?? "",
-      end: weekDates[weekDates.length - 1] ?? "",
+      start: weekDates[0],
+      end:   weekDates[weekDates.length - 1],
     },
   };
 }

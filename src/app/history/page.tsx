@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/authz";
+import { requireUser, requireAdmin } from "@/lib/authz";
 import { formatDay } from "@/lib/week";
+import { createBackup } from "./actions";
+import { RestoreButton, DeleteBackupButton } from "./BackupControls";
 
 export const dynamic = "force-dynamic";
 
@@ -34,13 +36,17 @@ function formatDateTime(d: Date): string {
 export default async function HistoryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ entity?: string }>;
+  searchParams: Promise<{ entity?: string; restored?: string }>;
 }) {
   await requireUser();
-  const { entity } = await searchParams;
+  const { entity, restored } = await searchParams;
   const entityFilter = ENTITIES.includes(entity as (typeof ENTITIES)[number]) ? entity : undefined;
 
-  const [logs, snapshots] = await Promise.all([
+  // Solo admins pueden ver/gestionar respaldos
+  let isAdmin = false;
+  try { await requireAdmin(); isAdmin = true; } catch { /* viewer */ }
+
+  const [logs, snapshots, backups] = await Promise.all([
     prisma.auditLog.findMany({
       where: entityFilter ? { entity: entityFilter } : undefined,
       orderBy: { createdAt: "desc" },
@@ -48,11 +54,67 @@ export default async function HistoryPage({
       include: { user: true },
     }),
     prisma.weeklySnapshot.findMany({ orderBy: { createdAt: "desc" } }),
+    isAdmin ? prisma.databaseBackup.findMany({ orderBy: { createdAt: "desc" } }) : Promise.resolve([]),
   ]);
 
   return (
     <main>
       <h1>Historial y auditoría</h1>
+
+      {restored && (
+        <div className="alert alert-success" role="alert">
+          <strong>Base de datos restaurada correctamente.</strong>
+        </div>
+      )}
+
+      {/* ── Respaldos de emergencia (solo admin) ──────────────────────────── */}
+      {isAdmin && (
+        <section>
+          <h2>Respaldos de base de datos</h2>
+          <p className="subtitle">
+            Guarda el estado completo de la base de datos y restáuralo en caso de emergencia.
+            Los respaldos incluyen consultores, engagements, asignaciones, ausencias y feriados.
+          </p>
+
+          <form action={createBackup} className="inline-form" style={{ marginBottom: "1rem" }}>
+            <input
+              type="text"
+              name="label"
+              placeholder="Descripción del respaldo (opcional)"
+              style={{ minWidth: "280px" }}
+            />
+            <button type="submit" className="btn">
+              Crear respaldo ahora
+            </button>
+          </form>
+
+          {backups.length === 0 ? (
+            <p className="unassigned">Aún no hay respaldos creados.</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Descripción</th>
+                  <th>Creado (UTC)</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {backups.map((b) => (
+                  <tr key={b.id}>
+                    <td>{b.label}</td>
+                    <td>{formatDateTime(b.createdAt)}</td>
+                    <td className="import-row-actions">
+                      <RestoreButton backupId={b.id} backupLabel={b.label} />
+                      <DeleteBackupButton backupId={b.id} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+      )}
 
       <section>
         <h2>Snapshots semanales</h2>

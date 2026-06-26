@@ -187,6 +187,15 @@ model ConsultantSkill {
   @@index([skillId])
 }
 
+// Respaldo completo de la base de datos operacional en un momento dado.
+// Permite restaurar el estado a ese instante (botón de emergencia).
+model DatabaseBackup {
+  id        String   @id @default(cuid())
+  label     String   // Descripción del respaldo
+  payload   String   // JSON con el estado completo
+  createdAt DateTime @default(now())
+}
+
 // Log de auditoría: quién hizo qué cambio y cuándo.
 model AuditLog {
   id        String   @id @default(cuid())
