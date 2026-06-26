@@ -9,7 +9,7 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DATABASE_URL_UNPOOLED")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
 // Usuarios de la aplicación. Por ahora: ADMIN (lee/escribe) y VIEWER (solo lectura).
