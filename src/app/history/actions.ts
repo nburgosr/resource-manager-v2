@@ -9,30 +9,30 @@ import { requireAdmin } from "@/lib/authz";
 // Tipos internos del payload
 // ---------------------------------------------------------------------------
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyRecord = Record<string, any>;
+
 type BackupData = {
-  consultants: object[];
-  skills: object[];
-  consultantSkills: object[];
-  engagements: object[];
-  engagementLeads: object[];
-  staffingBase: object[];
-  staffingOverrides: object[];
-  assignments: object[];
-  absences: object[];
-  holidays: object[];
+  consultants: AnyRecord[];
+  skills: AnyRecord[];
+  consultantSkills: AnyRecord[];
+  engagements: AnyRecord[];
+  engagementLeads: AnyRecord[];
+  staffingBase: AnyRecord[];
+  staffingOverrides: AnyRecord[];
+  assignments: AnyRecord[];
+  absences: AnyRecord[];
+  holidays: AnyRecord[];
 };
 
 // Convierte strings ISO de vuelta a Date para los campos DateTime conocidos.
-function toDates<T extends Record<string, unknown>>(
-  records: object[],
-  fields: string[]
-): T[] {
-  return (records as Record<string, unknown>[]).map((r) => {
+function toDates(records: AnyRecord[], fields: string[]): AnyRecord[] {
+  return records.map((r) => {
     const copy = { ...r };
     for (const f of fields) {
       if (typeof copy[f] === "string") copy[f] = new Date(copy[f] as string);
     }
-    return copy as T;
+    return copy;
   });
 }
 
@@ -130,7 +130,7 @@ export async function restoreBackup(formData: FormData): Promise<void> {
         });
 
       if (data.skills.length)
-        await tx.skill.createMany({ data: data.skills as Parameters<typeof tx.skill.createMany>[0]["data"] });
+        await tx.skill.createMany({ data: data.skills });
 
       if (data.consultants.length)
         await tx.consultant.createMany({
@@ -143,14 +143,10 @@ export async function restoreBackup(formData: FormData): Promise<void> {
         });
 
       if (data.consultantSkills.length)
-        await tx.consultantSkill.createMany({
-          data: data.consultantSkills as Parameters<typeof tx.consultantSkill.createMany>[0]["data"],
-        });
+        await tx.consultantSkill.createMany({ data: data.consultantSkills });
 
       if (data.engagementLeads.length)
-        await tx.engagementLead.createMany({
-          data: data.engagementLeads as Parameters<typeof tx.engagementLead.createMany>[0]["data"],
-        });
+        await tx.engagementLead.createMany({ data: data.engagementLeads });
 
       if (data.staffingBase.length)
         await tx.staffingBase.createMany({
