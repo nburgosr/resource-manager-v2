@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE "DatabaseBackup" (
+CREATE TABLE IF NOT EXISTS "DatabaseBackup" (
     "id" TEXT NOT NULL,
     "label" TEXT NOT NULL,
     "payload" TEXT NOT NULL,
