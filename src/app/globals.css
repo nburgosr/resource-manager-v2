@@ -72,10 +72,36 @@ main {
   max-width: 1040px;
   margin: 0 auto;
   padding: 2.25rem 1.5rem 5rem;
+  animation: pageEnter 0.22s ease-out;
 }
 
 main.wide {
   max-width: 1440px;
+}
+
+/* ---------- Page entrance animation ---------- */
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Top progress bar (shown inside loading.tsx) ---------- */
+@keyframes progressFill {
+  0%   { transform: scaleX(0.01); opacity: 1; }
+  75%  { transform: scaleX(0.82); opacity: 1; }
+  100% { transform: scaleX(0.88); opacity: 0.9; }
+}
+.page-loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--ey-yellow);
+  transform-origin: left center;
+  transform: scaleX(0);
+  animation: progressFill 1.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  z-index: 200;
 }
 
 /* ---------- Skeleton loading ---------- */
@@ -113,6 +139,14 @@ main.wide {
   width: 100%;
   border-radius: 8px;
   margin-bottom: 20px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--bg) 50%, var(--border) 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+.skeleton-line {
+  display: block;
+  height: 14px;
+  border-radius: 4px;
   background: linear-gradient(90deg, var(--border) 25%, var(--bg) 50%, var(--border) 75%);
   background-size: 600px 100%;
   animation: shimmer 1.4s infinite linear;
@@ -188,6 +222,7 @@ section {
 }
 
 .topnav .nav-link {
+  position: relative;
   color: var(--muted);
   font-size: 0.88rem;
   font-weight: 500;
@@ -205,6 +240,19 @@ section {
   color: var(--ey-dark);
   background: rgba(0, 0, 0, 0.05);
   font-weight: 600;
+}
+
+.topnav .nav-link.active::after {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ey-yellow);
+  pointer-events: none;
 }
 
 .nav-user {

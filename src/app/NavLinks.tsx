@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const LINKS = [
@@ -22,9 +23,14 @@ export default function NavLinks() {
   return (
     <>
       {LINKS.map((l) => (
-        <a key={l.href} href={l.href} className={`nav-link${isActive(l.base) ? " active" : ""}`}>
+        <Link
+          key={l.href}
+          href={l.href}
+          prefetch={true}
+          className={`nav-link${isActive(l.base) ? " active" : ""}`}
+        >
           {l.label}
-        </a>
+        </Link>
       ))}
     </>
   );
