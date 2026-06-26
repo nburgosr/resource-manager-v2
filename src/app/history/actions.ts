@@ -124,49 +124,41 @@ export async function restoreBackup(formData: FormData): Promise<void> {
       await tx.holiday.deleteMany();
 
       // 2. Restaurar en orden (respetando FK)
+      // El cast "as any" es necesario porque el payload JSON tipado genéricamente
+      // no satisface los tipos exactos de Prisma (ej. HolidayCreateManyInput).
+      // La corrección de fechas mediante toDates garantiza el valor correcto en runtime.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const asAny = (d: AnyRecord[]): any => d;
+
       if (data.holidays.length)
-        await tx.holiday.createMany({
-          data: toDates(data.holidays, ["date"]),
-        });
+        await tx.holiday.createMany({ data: asAny(toDates(data.holidays, ["date"])) });
 
       if (data.skills.length)
-        await tx.skill.createMany({ data: data.skills });
+        await tx.skill.createMany({ data: asAny(data.skills) });
 
       if (data.consultants.length)
-        await tx.consultant.createMany({
-          data: toDates(data.consultants, ["createdAt"]),
-        });
+        await tx.consultant.createMany({ data: asAny(toDates(data.consultants, ["createdAt"])) });
 
       if (data.engagements.length)
-        await tx.engagement.createMany({
-          data: toDates(data.engagements, ["startDate", "endDate", "createdAt"]),
-        });
+        await tx.engagement.createMany({ data: asAny(toDates(data.engagements, ["startDate", "endDate", "createdAt"])) });
 
       if (data.consultantSkills.length)
-        await tx.consultantSkill.createMany({ data: data.consultantSkills });
+        await tx.consultantSkill.createMany({ data: asAny(data.consultantSkills) });
 
       if (data.engagementLeads.length)
-        await tx.engagementLead.createMany({ data: data.engagementLeads });
+        await tx.engagementLead.createMany({ data: asAny(data.engagementLeads) });
 
       if (data.staffingBase.length)
-        await tx.staffingBase.createMany({
-          data: toDates(data.staffingBase, ["startDate", "endDate"]),
-        });
+        await tx.staffingBase.createMany({ data: asAny(toDates(data.staffingBase, ["startDate", "endDate"])) });
 
       if (data.staffingOverrides.length)
-        await tx.staffingOverride.createMany({
-          data: toDates(data.staffingOverrides, ["weekStart"]),
-        });
+        await tx.staffingOverride.createMany({ data: asAny(toDates(data.staffingOverrides, ["weekStart"])) });
 
       if (data.assignments.length)
-        await tx.assignment.createMany({
-          data: toDates(data.assignments, ["weekStart", "createdAt", "updatedAt"]),
-        });
+        await tx.assignment.createMany({ data: asAny(toDates(data.assignments, ["weekStart", "createdAt", "updatedAt"])) });
 
       if (data.absences.length)
-        await tx.absence.createMany({
-          data: toDates(data.absences, ["weekStart", "createdAt"]),
-        });
+        await tx.absence.createMany({ data: asAny(toDates(data.absences, ["weekStart", "createdAt"])) });
     },
     { timeout: 60_000 }
   );
