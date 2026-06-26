@@ -78,6 +78,46 @@ main.wide {
   max-width: 1440px;
 }
 
+/* ---------- Skeleton loading ---------- */
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+.skeleton {
+  display: inline-block;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--bg) 50%, var(--border) 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+.skeleton-row {
+  height: 44px;
+  width: 100%;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--bg) 50%, var(--border) 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+.skeleton-title {
+  height: 32px;
+  width: 260px;
+  border-radius: 6px;
+  margin-bottom: 24px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--bg) 50%, var(--border) 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+.skeleton-bar {
+  height: 36px;
+  width: 100%;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--bg) 50%, var(--border) 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
 /* ---------- Tipografía ---------- */
 h1 {
   font-size: 1.75rem;
@@ -291,6 +331,43 @@ tbody tr:hover {
   text-decoration: none;
   transition: background 0.15s, transform 0.05s, box-shadow 0.15s;
   box-shadow: var(--shadow-sm);
+}
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.85rem;
+  font-weight: 500;
+  font-size: 0.84rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.12s, border-color 0.12s;
+}
+.btn-outline:hover {
+  background: var(--faint);
+  border-color: var(--text);
+}
+.btn-outline.today {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btn-outline.today:hover {
+  background: var(--ey-yellow);
+  border-color: var(--ey-yellow-hover);
+  color: var(--ey-dark);
+}
+
+/* Barra de navegación de semana (resumen y calendario) */
+.week-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .btn:hover {
@@ -509,6 +586,12 @@ select:focus {
   color: var(--muted);
   font-style: normal;
   font-size: 0.85rem;
+}
+
+.absence-note {
+  color: #7c6f00;
+  font-size: 0.78rem;
+  margin-top: 2px;
 }
 
 /* ---------- Calendario semanal ---------- */
@@ -810,3 +893,656 @@ select:focus {
   margin-left: 0.4rem;
   vertical-align: middle;
 }
+
+/* ---------- Skills ---------- */
+.skills-input-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  min-width: 180px;
+  cursor: text;
+  background: var(--panel);
+  transition: border-color 0.15s;
+}
+
+.skills-input-wrap:focus-within {
+  border-color: var(--accent);
+  outline: 2px solid var(--focus);
+}
+
+.skill-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--ey-dark);
+  color: var(--ey-yellow);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.skill-pill-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+  opacity: 0.7;
+  transition: opacity 0.12s;
+}
+
+.skill-pill-remove:hover {
+  opacity: 1;
+}
+
+.skills-text-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.85rem;
+  min-width: 110px;
+  flex: 1;
+  color: var(--text);
+}
+
+.skills-text-input::placeholder {
+  color: var(--faint);
+}
+
+.skill-pills-readonly {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* ---------- Dirty row (unsaved changes) ---------- */
+tr[data-dirty] td:first-child {
+  box-shadow: inset 3px 0 0 var(--ey-yellow);
+}
+
+tr[data-dirty] {
+  background: rgba(255, 230, 0, 0.06);
+}
+
+.consultant-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.unsaved-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #b8940a;
+  flex-shrink: 0;
+}
+
+/* ---------- Hover tooltip ---------- */
+.hover-tooltip {
+  position: fixed;
+  z-index: 9999;
+  background: var(--ey-dark);
+  color: #fff;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  padding: 7px 11px;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+  white-space: pre-line;
+  pointer-events: none;
+  max-width: 280px;
+}
+
+/* ---------- Import module ---------- */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+.import-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 1.5rem 0 2rem;
+}
+
+.import-stat {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 20px;
+  min-width: 130px;
+  text-align: center;
+}
+
+.import-stat-value {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ey-dark);
+}
+
+.import-stat-label {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.import-stat.import-stat-new .import-stat-value  { color: var(--success); }
+.import-stat.import-stat-updated .import-stat-value { color: var(--p1); }
+
+.import-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.import-badge.new      { background: var(--success-bg); color: var(--success); }
+.import-badge.updated  { background: rgba(184,134,11,0.12); color: var(--p1); }
+
+.import-old {
+  color: var(--muted);
+  text-decoration: line-through;
+  font-size: 0.9em;
+}
+
+.import-changes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 60vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+}
+
+.import-consultant-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.import-consultant-group > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--bg);
+}
+
+.import-consultant-group > summary:hover { background: var(--border); }
+
+.import-group-count {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+.import-consultant-group table {
+  margin: 0;
+  border-top: 1px solid var(--border);
+}
+
+.import-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 2rem 0 1rem;
+  border-top: 1px solid var(--border);
+  margin-top: 2rem;
+}
+
+.import-row-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* =========================================================================
+   KPI Dashboard — Resumen
+   ========================================================================= */
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2.5rem;
+}
+
+.kpi-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 1.25rem 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.kpi-value {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.25rem;
+}
+
+.kpi-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.kpi-sub {
+  font-size: 0.8rem;
+  color: var(--faint);
+  margin-top: 0.45rem;
+}
+
+.kpi-ok {
+  color: var(--success);
+  font-style: italic;
+  font-size: 0.95rem;
+}
+
+/* Tabla de KPIs */
+.kpi-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.kpi-table th,
+.kpi-table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+
+.kpi-table th {
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.kpi-table .num-col {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Barra de utilización */
+.util-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.util-bar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.util-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.util-pct {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 3.2rem;
+  text-align: right;
+  color: var(--muted);
+}
+
+/* Grid de desasignados */
+.unassigned-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.unassigned-group {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+}
+
+.unassigned-rank-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+
+.unassigned-name {
+  font-size: 0.875rem;
+  padding: 0.15rem 0;
+  color: var(--text);
+}
+
+/* =========================================================================
+   Charts
+   ========================================================================= */
+
+.chart-section h2 .chart-subtitle {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 0.5rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.chart-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem 0.75rem 0.75rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.chart-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 720px) {
+  .chart-pair {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tooltip recharts personalizado */
+.chart-tooltip {
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+  box-shadow: var(--shadow-md);
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.chart-tooltip-title {
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+  color: var(--text);
+}
+
+.chart-tooltip-muted {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.chart-loading {
+  height: 200px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* =========================================================================
+   Assignment Panel — slide-over derecho
+   ========================================================================= */
+
+.panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.22);
+  z-index: 40;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.panel-slide {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100dvh;
+  width: 380px;
+  max-width: 100vw;
+  background: var(--panel);
+  box-shadow: -8px 0 40px rgba(0, 0, 0, 0.14);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.22s cubic-bezier(.4,0,.2,1);
+  overflow: hidden;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.panel-subtitle {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 0.15rem;
+}
+
+.panel-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 1rem;
+  padding: 0.25rem 0.4rem;
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  transition: background 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+.panel-close:hover { background: var(--border); color: var(--text); }
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.5rem 2rem;
+}
+
+.panel-section {
+  margin-bottom: 1.75rem;
+}
+
+.panel-section-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  margin: 0 0 0.65rem;
+}
+
+/* Fila de asignación existente */
+.panel-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.panel-row:last-child { border-bottom: none; }
+
+.panel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.panel-row-name {
+  flex: 1;
+  font-size: 0.875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-row-hrs {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.panel-icon-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.45rem;
+  color: var(--muted);
+  line-height: 1.4;
+  transition: all 0.12s;
+  flex-shrink: 0;
+}
+.panel-icon-btn.danger:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* Formulario de nueva asignación */
+.panel-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.panel-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-top: 0.55rem;
+}
+
+.panel-select,
+.panel-input {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.panel-select:focus,
+.panel-input:focus {
+  outline: none;
+  border-color: var(--ey-dark);
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.panel-hint {
+  font-size: 0.73rem;
+  color: var(--faint);
+  margin: 0.2rem 0 0;
+}
+
+.panel-submit {
+  margin-top: 0.75rem;
+  width: 100%;
+  justify-content: center;
+}
+
+/* Botón "+ Asignar" en cada celda del calendario */
+.cell-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+  font-size: 0.73rem;
+  color: var(--muted);
+  background: none;
+  border: 1px dashed var(--border-strong);
+  border-radius: 4px;
+  padding: 3px 9px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.cell-add-btn:hover {
+  background: var(--ey-yellow);
+  border-color: var(--ey-yellow-hover);
+  color: var(--ey-dark);
+  border-style: solid;
+}
+
+

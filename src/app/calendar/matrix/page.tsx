@@ -17,6 +17,9 @@ import {
   weeklyCapacity,
 } from "@/lib/week";
 
+import { HoverTooltip } from "@/app/HoverTooltip";
+import { AssignmentPanel } from "../AssignmentPanel";
+
 export const dynamic = "force-dynamic";
 
 // Ventana fija de 6 meses.
@@ -40,7 +43,8 @@ export default async function MatrixPage({
 }: {
   searchParams: Promise<{ start?: string }>;
 }) {
-  await requireUser();
+  const user = await requireUser();
+  const isAdmin = user.role === "ADMIN";
   const { start } = await searchParams;
 
   const startMonday = parseWeekParam(start);
@@ -49,27 +53,31 @@ export default async function MatrixPage({
   const columns = Array.from({ length: WINDOW_WEEKS }, (_, i) => addWeeks(startMonday, i));
   const lastMonday = columns[columns.length - 1];
 
-  const [consultants, holidays, assignments] = await Promise.all([
+  const [consultants, holidays, assignments, activeEngagements] = await Promise.all([
     prisma.consultant.findMany({ where: { status: "ACTIVE", rank: { in: GROUP_ORDER } } }),
     prisma.holiday.findMany(),
     prisma.assignment.findMany({
       where: { weekStart: { gte: startMonday, lte: lastMonday } },
       include: { engagement: true },
     }),
+    prisma.engagement.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" } }),
   ]);
 
   const holidayDates = holidays.map((h) => h.date);
   const capacityByWeek = new Map(columns.map((m) => [formatDay(m), weeklyCapacity(m, holidayDates)]));
 
-  // consultor -> semana -> (tipo -> horas)
-  type CellMap = Map<string, Map<string, number>>;
+  // consultor -> semana -> { items, byType }
+  type CellItem = { id: string; engagementId: string; name: string; type: string; hours: number };
+  type CellData = { items: CellItem[]; byType: Map<string, number> };
+  type CellMap = Map<string, CellData>;
   const grid = new Map<string, CellMap>();
   for (const a of assignments) {
     const wk = formatDay(a.weekStart);
-    const perWeek = grid.get(a.consultantId) ?? new Map();
-    const perType = perWeek.get(wk) ?? new Map<string, number>();
-    perType.set(a.engagement.type, (perType.get(a.engagement.type) ?? 0) + a.hours);
-    perWeek.set(wk, perType);
+    const perWeek = grid.get(a.consultantId) ?? new Map<string, CellData>();
+    const cell = perWeek.get(wk) ?? { items: [], byType: new Map<string, number>() };
+    cell.items.push({ id: a.id, engagementId: a.engagementId, name: a.engagement.engagementName || a.engagement.name, type: a.engagement.type, hours: a.hours });
+    cell.byType.set(a.engagement.type, (cell.byType.get(a.engagement.type) ?? 0) + a.hours);
+    perWeek.set(wk, cell);
     grid.set(a.consultantId, perWeek);
   }
 
@@ -85,32 +93,66 @@ export default async function MatrixPage({
   const prevStart = formatDay(addWeeks(startMonday, -WINDOW_WEEKS));
   const nextStart = formatDay(addWeeks(startMonday, WINDOW_WEEKS));
 
-  const renderCell = (consultantId: string, isAssignable: boolean, m: Date) => {
+  const buildPanelData = (consultantId: string, consultantName: string, wk: string, items: CellItem[]) =>
+    JSON.stringify({
+      consultantId,
+      consultantName,
+      weekStr: wk,
+      assignments: items.map((a) => ({
+        id: a.id,
+        engagementId: a.engagementId,
+        engagementName: a.name,
+        hours: a.hours,
+        priority: ENGAGEMENT_TYPE_PRIORITY[a.type as EngagementType],
+      })),
+    });
+
+  const renderCell = (consultantId: string, consultantName: string, isAssignable: boolean, m: Date) => {
     const wk = formatDay(m);
-    const perType = grid.get(consultantId)?.get(wk);
-    const total = perType ? [...perType.values()].reduce((s, h) => s + h, 0) : 0;
+    const cell = grid.get(consultantId)?.get(wk);
+    const items = cell?.items ?? [];
+    const byType = cell?.byType;
+    const total = items.reduce((s, i) => s + i.hours, 0);
     const capacity = capacityByWeek.get(wk) ?? 0;
     const over = total > capacity;
     const unassigned = isAssignable && total === 0;
 
     if (total === 0) {
       return (
-        <td key={wk} className={unassigned ? "mx-cell mx-unassigned" : "mx-cell"}>
+        <td
+          key={wk}
+          className={unassigned ? "mx-cell mx-unassigned" : "mx-cell"}
+          data-panel={isAdmin ? buildPanelData(consultantId, consultantName, wk, []) : undefined}
+          style={isAdmin ? { cursor: "pointer" } : undefined}
+        >
           <span className="mx-empty">{unassigned ? "—" : ""}</span>
         </td>
       );
     }
 
-    const segments = [...perType!.entries()].sort(
+    const sortedItems = [...items].sort(
+      (a, b) =>
+        ENGAGEMENT_TYPE_PRIORITY[a.type as EngagementType] -
+        ENGAGEMENT_TYPE_PRIORITY[b.type as EngagementType]
+    );
+    const tooltip = sortedItems.map((i) => `${i.name}: ${i.hours.toFixed(1)}h`).join("\n");
+
+    const segments = [...byType!.entries()].sort(
       (a, b) =>
         ENGAGEMENT_TYPE_PRIORITY[a[0] as EngagementType] -
         ENGAGEMENT_TYPE_PRIORITY[b[0] as EngagementType]
     );
 
     return (
-      <td key={wk} className="mx-cell">
+      <td
+        key={wk}
+        className="mx-cell"
+        data-tooltip={tooltip}
+        data-panel={isAdmin ? buildPanelData(consultantId, consultantName, wk, items) : undefined}
+        style={isAdmin ? { cursor: "pointer" } : undefined}
+      >
         <span className={over ? "mx-hrs over" : "mx-hrs"}>{total.toFixed(1)}</span>
-        <div className="mx-bar" title={`${total.toFixed(1)} h de ${capacity.toFixed(1)} h`}>
+        <div className="mx-bar">
           {segments.map(([type, h]) => (
             <span
               key={type}
@@ -141,6 +183,12 @@ export default async function MatrixPage({
 
   return (
     <main className="wide">
+      <HoverTooltip />
+      {isAdmin && (
+        <AssignmentPanel
+          engagements={activeEngagements.map((e) => ({ id: e.id, name: e.engagementName || e.name }))}
+        />
+      )}
       <h1>Matriz de asignación · 6 meses</h1>
 
       <div className="week-bar">
@@ -192,7 +240,7 @@ export default async function MatrixPage({
                   {members.map((c) => (
                     <tr key={c.id}>
                       <td className="mx-consultant">{c.name}</td>
-                      {columns.map((m) => renderCell(c.id, true, m))}
+                      {columns.map((m) => renderCell(c.id, c.name, true, m))}
                     </tr>
                   ))}
                 </tbody>

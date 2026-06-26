@@ -26,21 +26,26 @@ model User {
 model Consultant {
   id        String   @id @default(cuid())
   name      String
-  // STAFF | SENIOR | SENIOR_ESPECIALISTA | MANAGER | SENIOR_MANAGER | ASSOCIATED_PARTNER | PARTNER
+  // TRAINEE | STAFF | SENIOR | SENIOR_ESPECIALISTA | MANAGER | SENIOR_MANAGER | ASSOCIATED_PARTNER | PARTNER
   rank      String
   status    String   @default("ACTIVE") // ACTIVE | INACTIVE
   createdAt DateTime @default(now())
 
   assignments Assignment[]
+  absences    Absence[]
   leadOf      EngagementLead[]
   partnerOf   Engagement[]     @relation("EngagementPartner")
+  skills      ConsultantSkill[]
 }
 
 // Proyectos con cliente, iniciativas internas y propuestas comerciales.
 model Engagement {
   id String @id @default(cuid())
 
+  // name: identificador importado (cliente / código). Viene del xlsx.
   name String
+  // engagementName: nombre descriptivo configurable en la plataforma (opcional).
+  engagementName String?
   // CLIENT_PROJECT | INTERNAL_WITH_CODE | COMMERCIAL_PROPOSAL | INTERNAL_NO_CODE
   type           String
   engagementCode String?
@@ -122,6 +127,22 @@ model StaffingOverride {
   @@index([weekStart])
 }
 
+// Ausencias de un consultor en una semana (vacaciones, licencia, etc.).
+// Las horas de ausencia se descuentan de la capacidad disponible de esa semana.
+model Absence {
+  id           String   @id @default(cuid())
+  consultantId String
+  weekStart    DateTime
+  hours        Float
+  note         String? // Ej: "Vacaciones", "Licencia médica"
+  createdAt    DateTime @default(now())
+
+  consultant Consultant @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+
+  @@unique([consultantId, weekStart])
+  @@index([weekStart])
+}
+
 // Calendario de feriados que descuentan capacidad horaria.
 model Holiday {
   id   String   @id @default(cuid())
@@ -137,6 +158,32 @@ model WeeklySnapshot {
   createdAt DateTime @default(now())
 
   @@index([weekStart])
+}
+
+// Importación pendiente de confirmación (xlsx parseado, antes de aplicar).
+model PendingImport {
+  id        String   @id @default(cuid())
+  filename  String
+  payload   String   // JSON: ParsedXlsxData
+  createdAt DateTime @default(now())
+}
+
+// Etiqueta de habilidad reutilizable entre consultores.
+model Skill {
+  id          String            @id @default(cuid())
+  name        String            @unique
+  consultants ConsultantSkill[]
+}
+
+// Relación N:N entre Consultant y Skill.
+model ConsultantSkill {
+  consultantId String
+  skillId      String
+  consultant   Consultant @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+  skill        Skill      @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([consultantId, skillId])
+  @@index([skillId])
 }
 
 // Log de auditoría: quién hizo qué cambio y cuándo.

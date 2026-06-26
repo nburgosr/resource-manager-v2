@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/consultants", label: "Consultores", base: "/consultants" },
   { href: "/holidays", label: "Feriados", base: "/holidays" },
   { href: "/history", label: "Historial", base: "/history" },
+  { href: "/import", label: "Importar", base: "/import" },
 ];
 
 export default function NavLinks() {

@@ -38,10 +38,29 @@ export async function updateConsultant(formData: FormData): Promise<void> {
   const rank = str(formData.get("rank"));
   if (!id || !RANKS.includes(rank as Rank)) return;
 
-  await prisma.consultant.update({
-    where: { id },
-    data: { name: str(formData.get("name")), rank, status: str(formData.get("status")) || "ACTIVE" },
+  const skillNames = str(formData.get("skills"))
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.consultant.update({
+      where: { id },
+      data: { name: str(formData.get("name")), rank, status: str(formData.get("status")) || "ACTIVE" },
+    });
+
+    // Eliminar skills anteriores y reasignar los nuevos
+    await tx.consultantSkill.deleteMany({ where: { consultantId: id } });
+    for (const name of skillNames) {
+      const skill = await tx.skill.upsert({
+        where: { name },
+        update: {},
+        create: { name },
+      });
+      await tx.consultantSkill.create({ data: { consultantId: id, skillId: skill.id } });
+    }
   });
+
   await audit(admin.id, "UPDATE", id);
   refresh();
 }

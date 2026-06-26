@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/authz";
+import { addWeeks, formatDay, getMonday } from "@/lib/week";
 
 function refresh() {
   revalidatePath("/calendar");
@@ -55,6 +56,61 @@ export async function deleteAssignment(formData: FormData): Promise<void> {
 
   await prisma.auditLog.create({
     data: { userId: admin.id, action: "DELETE", entity: "Assignment", entityId: id },
+  });
+
+  refresh();
+}
+
+/**
+ * Crea o actualiza asignaciones para un rango de semanas.
+ * weekStart = semana desde la que aplica.
+ * weekEnd   = última semana (inclusive); si no se pasa, solo aplica weekStart.
+ */
+export async function upsertAssignmentRange(formData: FormData): Promise<void> {
+  const admin = await requireAdmin();
+
+  const consultantId = String(formData.get("consultantId"));
+  const engagementId = String(formData.get("engagementId"));
+  const weekStart    = parseWeek(formData.get("weekStart"));
+  const rawEnd       = formData.get("weekEnd");
+  const weekEnd      = rawEnd
+    ? getMonday(new Date(`${String(rawEnd)}T00:00:00.000Z`))
+    : weekStart;
+  const hours = Number(formData.get("hours"));
+
+  if (!consultantId || !engagementId || !Number.isFinite(hours) || hours <= 0) return;
+  if (weekEnd < weekStart) return;
+
+  let cur = weekStart;
+  let count = 0;
+  const ids: string[] = [];
+
+  while (cur <= weekEnd && count < 53) {
+    const ws = new Date(cur.getTime());
+    const a = await prisma.assignment.upsert({
+      where: { consultantId_engagementId_weekStart: { consultantId, engagementId, weekStart: ws } },
+      create: { consultantId, engagementId, weekStart: ws, hours },
+      update: { hours },
+    });
+    ids.push(a.id);
+    cur = addWeeks(cur, 1);
+    count++;
+  }
+
+  await prisma.auditLog.create({
+    data: {
+      userId: admin.id,
+      action: "UPSERT",
+      entity: "Assignment",
+      entityId: ids[0] ?? "range",
+      details: JSON.stringify({
+        consultantId, engagementId,
+        weekStart: formatDay(weekStart),
+        weekEnd: formatDay(weekEnd),
+        hours,
+        weeksCount: count,
+      }),
+    },
   });
 
   refresh();

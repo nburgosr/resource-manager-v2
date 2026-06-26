@@ -57,7 +57,12 @@ export default async function EngagementDetailPage({
       <p>
         <a href="/engagements">← Engagements</a>
       </p>
-      <h1>{engagement.name}</h1>
+      <h1>{engagement.engagementName || engagement.name}</h1>
+      {engagement.engagementName && (
+        <p style={{ color: "var(--muted)", marginTop: "-0.5rem", fontSize: "0.85rem" }}>
+          {engagement.name}
+        </p>
+      )}
 
       {/* ---------- Datos generales ---------- */}
       <section>
@@ -66,8 +71,13 @@ export default async function EngagementDetailPage({
           <form action={updateEngagement} className="form">
             <input type="hidden" name="id" value={engagement.id} />
             <label>
-              Nombre
+              Cliente / Nombre en sistema
               <input name="name" defaultValue={engagement.name} required />
+            </label>
+            <label>
+              Nombre del engagement
+              <input name="engagementName" defaultValue={engagement.engagementName ?? ""} placeholder="(opcional)" />
+              <small style={{ color: "var(--muted)" }}>Si se completa, se mostrará en el calendario y la matriz.</small>
             </label>
             <div className="row">
               <label>

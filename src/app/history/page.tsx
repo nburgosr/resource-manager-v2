@@ -20,6 +20,7 @@ const ACTION_LABEL: Record<string, string> = {
   UPSERT: "Alta/edición",
   UPDATE: "Edición",
   DELETE: "Eliminación",
+  IMPORT: "Importación xlsx",
 };
 
 function formatDateTime(d: Date): string {

@@ -33,8 +33,14 @@ export default async function NewEngagementPage() {
 
       <form action={createEngagement} className="form">
         <label>
-          Nombre
-          <input name="name" required />
+          Cliente / Nombre en sistema
+          <input name="name" required placeholder="Nombre tal como figura en el xlsx" />
+        </label>
+
+        <label>
+          Nombre del engagement
+          <input name="engagementName" placeholder="Nombre descriptivo (opcional)" />
+          <small style={{ color: "var(--muted)" }}>Si se completa, se usará este nombre en el calendario y la matriz.</small>
         </label>
 
         <div className="row">

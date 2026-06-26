@@ -1,6 +1,7 @@
 // Valores enumerables del dominio (SQLite no soporta enums nativos en Prisma).
 
 export const RANKS = [
+  "TRAINEE",
   "STAFF",
   "SENIOR",
   "SENIOR_ESPECIALISTA",
@@ -12,7 +13,7 @@ export const RANKS = [
 export type Rank = (typeof RANKS)[number];
 
 // Ranks de la capa de consultoría (asignables a horas de proyecto).
-export const CONSULTING_RANKS: Rank[] = ["STAFF", "SENIOR", "SENIOR_ESPECIALISTA"];
+export const CONSULTING_RANKS: Rank[] = ["TRAINEE", "STAFF", "SENIOR", "SENIOR_ESPECIALISTA"];
 
 // Ranks de la capa de gestión/ejecutiva.
 export const MANAGEMENT_RANKS: Rank[] = ["MANAGER", "SENIOR_MANAGER"];
@@ -24,6 +25,7 @@ export const RANK_GROUP_ORDER: Rank[] = [
   "SENIOR_ESPECIALISTA",
   "SENIOR",
   "STAFF",
+  "TRAINEE",
   "MANAGER",
   "SENIOR_MANAGER",
   "ASSOCIATED_PARTNER",
@@ -31,6 +33,7 @@ export const RANK_GROUP_ORDER: Rank[] = [
 ];
 
 export const RANK_LABELS: Record<Rank, string> = {
+  TRAINEE: "Trainee",
   STAFF: "Staff",
   SENIOR: "Senior",
   SENIOR_ESPECIALISTA: "Senior Especialista",

@@ -9,6 +9,7 @@ async function main() {
   await prisma.auditLog.deleteMany();
   await prisma.weeklySnapshot.deleteMany();
   await prisma.assignment.deleteMany();
+  await prisma.absence.deleteMany();
   await prisma.staffingOverride.deleteMany();
   await prisma.staffingBase.deleteMany();
   await prisma.engagementLead.deleteMany();

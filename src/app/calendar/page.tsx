@@ -19,6 +19,8 @@ import {
   weeklyCapacity,
 } from "@/lib/week";
 import { deleteAssignment, snapshotWeek, upsertAssignment } from "./actions";
+import { HoverTooltip } from "@/app/HoverTooltip";
+import { AssignmentPanel } from "./AssignmentPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +47,7 @@ export default async function CalendarPage({
   const nextWeek = formatDay(addWeeks(monday, 1));
   const currentMonday = getMonday(new Date());
 
-  const [consultants, holidays, assignments, activeEngagements] = await Promise.all([
+  const [consultants, holidays, assignments, activeEngagements, absences] = await Promise.all([
     prisma.consultant.findMany({ where: { status: "ACTIVE" } }),
     prisma.holiday.findMany(),
     prisma.assignment.findMany({ where: { weekStart: monday }, include: { engagement: true } }),
@@ -53,6 +55,7 @@ export default async function CalendarPage({
       where: { startDate: { lte: friday }, endDate: { gte: monday }, status: "ACTIVE" },
       orderBy: { name: "asc" },
     }),
+    prisma.absence.findMany({ where: { weekStart: monday } }),
   ]);
 
   const capacity = weeklyCapacity(monday, holidays.map((h) => h.date));
@@ -62,6 +65,11 @@ export default async function CalendarPage({
     const list = byConsultant.get(a.consultantId) ?? [];
     list.push(a);
     byConsultant.set(a.consultantId, list);
+  }
+
+  const absenceByConsultant = new Map<string, number>();
+  for (const a of absences) {
+    absenceByConsultant.set(a.consultantId, a.hours);
   }
 
   // Agrupa consultores por rank (ordenados por nombre dentro de cada grupo).
@@ -79,11 +87,19 @@ export default async function CalendarPage({
         ENGAGEMENT_TYPE_PRIORITY[a.engagement.type as EngagementType] -
         ENGAGEMENT_TYPE_PRIORITY[b.engagement.type as EngagementType]
     );
+    const absenceHours = absenceByConsultant.get(c.id) ?? 0;
+    const effectiveCapacity = Math.max(0, capacity - absenceHours);
     const total = items.reduce((sum, a) => sum + a.hours, 0);
     const isConsulting = CONSULTING_RANKS.includes(c.rank as Rank);
-    const unassigned = isConsulting && total === 0;
-    const over = total > capacity;
-    const pct = capacity > 0 ? Math.min(100, (total / capacity) * 100) : 0;
+    const unassigned = isConsulting && total === 0 && effectiveCapacity > 0;
+    const over = total > effectiveCapacity;
+    const pct = effectiveCapacity > 0 ? Math.min(100, (total / effectiveCapacity) * 100) : 0;
+
+    const capacityTooltip = items.length > 0
+      ? items.map((a) => `${a.engagement.name}: ${a.hours.toFixed(1)}h`).join("\n")
+        + `\n───\nTotal: ${total.toFixed(1)} / ${effectiveCapacity.toFixed(1)}h`
+        + (absenceHours > 0 ? `\n✈ ${absenceHours.toFixed(1)}h ausencia` : "")
+      : undefined;
 
     return (
       <tr key={c.id} className={unassigned ? "row-unassigned" : undefined}>
@@ -102,7 +118,7 @@ export default async function CalendarPage({
             if (!isAdmin) {
               return (
                 <div key={a.id} className="chip" style={{ borderLeftColor: color }}>
-                  <span>{a.engagement.name}</span>
+                  <span>{a.engagement.engagementName || a.engagement.name}</span>
                   <span className="hrs">{a.hours} h</span>
                 </div>
               );
@@ -114,12 +130,12 @@ export default async function CalendarPage({
                 <input type="hidden" name="engagementId" value={a.engagementId} />
                 <input type="hidden" name="weekStart" value={weekStr} />
                 <input type="hidden" name="id" value={a.id} />
-                <span>{a.engagement.name}</span>
+                <span>{a.engagement.engagementName || a.engagement.name}</span>
                 <input
                   className="hrs-input"
                   type="number"
                   name="hours"
-                  defaultValue={a.hours}
+                  defaultValue={Math.round(a.hours * 10) / 10}
                   step="0.1"
                   min="0.1"
                 />
@@ -134,35 +150,33 @@ export default async function CalendarPage({
           })}
 
           {isAdmin && (
-            <form action={upsertAssignment} className="add-form">
-              <input type="hidden" name="consultantId" value={c.id} />
-              <input type="hidden" name="weekStart" value={weekStr} />
-              <select name="engagementId" required defaultValue="">
-                <option value="" disabled>
-                  + Añadir engagement…
-                </option>
-                {activeEngagements.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.name}
-                  </option>
-                ))}
-              </select>
-              <input
-                className="hrs-input"
-                type="number"
-                name="hours"
-                step="0.1"
-                min="0.1"
-                placeholder="h"
-              />
-              <button type="submit">+</button>
-            </form>
+            <button
+              type="button"
+              data-panel={JSON.stringify({
+                consultantId: c.id,
+                consultantName: c.name,
+                weekStr,
+                assignments: items.map((a) => ({
+                  id: a.id,
+                  engagementId: a.engagementId,
+                  engagementName: a.engagement.engagementName || a.engagement.name,
+                  hours: a.hours,
+                  priority: ENGAGEMENT_TYPE_PRIORITY[a.engagement.type as EngagementType],
+                })),
+              })}
+              className="cell-add-btn"
+            >
+              + Asignar
+            </button>
           )}
         </td>
-        <td className={over ? "cap over" : "cap"}>
+        <td className={over ? "cap over" : "cap"} data-tooltip={capacityTooltip}>
           <span className="total">
-            {total.toFixed(1)} / {capacity.toFixed(1)} h
+            {total.toFixed(1)} / {effectiveCapacity.toFixed(1)} h
           </span>
+          {absenceHours > 0 && (
+            <div className="absence-note">✈ {absenceHours.toFixed(1)} h ausencia</div>
+          )}
           <div className="meter">
             <span style={{ width: `${pct}%` }} />
           </div>
@@ -174,9 +188,12 @@ export default async function CalendarPage({
 
   return (
     <main>
+      <HoverTooltip />
+      <AssignmentPanel
+        engagements={activeEngagements.map((e) => ({ id: e.id, name: e.engagementName || e.name }))}
+      />
       <h1>Calendario semanal</h1>
-
-      <div className="week-bar">
+      <div className="week-nav">
         <a href={`/calendar?week=${prevWeek}`}>← Semana anterior</a>
         <span className="range">{formatWeekRange(monday)}</span>
         <a href={`/calendar?week=${nextWeek}`}>Semana siguiente →</a>

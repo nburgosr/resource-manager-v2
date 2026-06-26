@@ -58,7 +58,14 @@ export default async function EngagementsPage() {
             return (
               <tr key={e.id}>
                 <td>
-                  <a href={`/engagements/${e.id}`}>{e.name}</a>
+                  <a href={`/engagements/${e.id}`}>
+                    {e.engagementName || e.name}
+                  </a>
+                  {e.engagementName && (
+                    <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginTop: "2px" }}>
+                      {e.name}
+                    </div>
+                  )}
                 </td>
                 <td>
                   <span className="badge" style={{ background: PRIORITY_COLOR[priority] }}>

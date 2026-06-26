@@ -35,6 +35,7 @@ export async function createEngagement(formData: FormData): Promise<void> {
   const engagement = await prisma.engagement.create({
     data: {
       name,
+      engagementName: str(formData.get("engagementName")) || null,
       type,
       engagementCode: str(formData.get("engagementCode")) || null,
       status: str(formData.get("status")) || "ACTIVE",
@@ -57,6 +58,7 @@ export async function updateEngagement(formData: FormData): Promise<void> {
     where: { id },
     data: {
       name: str(formData.get("name")),
+      engagementName: str(formData.get("engagementName")) || null,
       type: str(formData.get("type")),
       engagementCode: str(formData.get("engagementCode")) || null,
       status: str(formData.get("status")) || "ACTIVE",
