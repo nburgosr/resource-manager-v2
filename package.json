@@ -8,8 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:reset": "prisma migrate reset",
     "db:seed": "prisma db seed",
+    "db:init": "tsx prisma/init-users.ts",
     "db:import": "tsx prisma/import-xlsx.ts",
     "db:studio": "prisma studio"
   },

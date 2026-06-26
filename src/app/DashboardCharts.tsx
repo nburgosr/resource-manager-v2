@@ -159,7 +159,7 @@ export function RankTrendChart({
   data: RankTrendPoint[];
   lines: LineConfig[];
 }) {
-  const currentLabel = data.find((d) => d.current as boolean)?.label;
+  const currentLabel = data.find((d) => !!d.current)?.label;
   return (
     <ResponsiveContainer width="100%" height={280}>
       <LineChart data={data} margin={{ top: 12, right: 24, bottom: 0, left: -4 }}>
@@ -227,7 +227,7 @@ export function TypeTrendChart({
   data: TypeTrendPoint[];
   lines: LineConfig[];
 }) {
-  const currentLabel = data.find((d) => d.current as boolean)?.label;
+  const currentLabel = data.find((d) => !!d.current)?.label;
   return (
     <ResponsiveContainer width="100%" height={280}>
       <LineChart data={data} margin={{ top: 12, right: 24, bottom: 0, left: -4 }}>

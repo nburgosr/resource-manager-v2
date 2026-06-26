@@ -81,21 +81,28 @@ export async function upsertAssignmentRange(formData: FormData): Promise<void> {
   if (!consultantId || !engagementId || !Number.isFinite(hours) || hours <= 0) return;
   if (weekEnd < weekStart) return;
 
-  let cur = weekStart;
-  let count = 0;
-  const ids: string[] = [];
-
-  while (cur <= weekEnd && count < 53) {
-    const ws = new Date(cur.getTime());
-    const a = await prisma.assignment.upsert({
-      where: { consultantId_engagementId_weekStart: { consultantId, engagementId, weekStart: ws } },
-      create: { consultantId, engagementId, weekStart: ws, hours },
-      update: { hours },
-    });
-    ids.push(a.id);
-    cur = addWeeks(cur, 1);
-    count++;
-  }
+  // Transacción para garantizar que todas las semanas se escriben o ninguna.
+  const { ids, count } = await prisma.$transaction(
+    async (tx) => {
+      const ids: string[] = [];
+      let cur = weekStart;
+      let count = 0;
+      while (cur <= weekEnd && count < 53) {
+        const ws = new Date(cur.getTime());
+        const a = await tx.assignment.upsert({
+          where: { consultantId_engagementId_weekStart: { consultantId, engagementId, weekStart: ws } },
+          create: { consultantId, engagementId, weekStart: ws, hours },
+          update: { hours },
+          select: { id: true },
+        });
+        ids.push(a.id);
+        cur = addWeeks(cur, 1);
+        count++;
+      }
+      return { ids, count };
+    },
+    { timeout: 15000 }
+  );
 
   await prisma.auditLog.create({
     data: {

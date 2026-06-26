@@ -58,8 +58,8 @@ export async function confirmImport(formData: FormData): Promise<void> {
   }
 
   // ── 3. Asignaciones ───────────────────────────────────────────────────────
-  let newAssignments = 0;
-  const updatedAssignments: Array<{ id: string; oldHours: number; newHours: number; engagementName: string; weekStart: string; consultantName: string }> = [];
+  // Se usa upsert para manejar conflictos de forma atómica en PostgreSQL.
+  let upsertedAssignments = 0;
 
   for (const a of data.assignments) {
     const consultantId = consultantIdMap.get(a.consultantName);
@@ -67,69 +67,31 @@ export async function confirmImport(formData: FormData): Promise<void> {
     if (!consultantId || !engagementId) continue;
 
     const weekStart = new Date(a.weekStart);
-    const existing = await prisma.assignment.findUnique({
+    await prisma.assignment.upsert({
       where: { consultantId_engagementId_weekStart: { consultantId, engagementId, weekStart } },
-      include: { engagement: true },
+      create: { consultantId, engagementId, weekStart, hours: a.hours },
+      update: { hours: a.hours },
     });
-
-    if (!existing) {
-      await prisma.assignment.create({ data: { consultantId, engagementId, weekStart, hours: a.hours } });
-      newAssignments++;
-    } else if (Math.abs(existing.hours - a.hours) > 0.05) {
-      await prisma.assignment.update({ where: { id: existing.id }, data: { hours: a.hours } });
-      updatedAssignments.push({
-        id: existing.id,
-        oldHours: existing.hours,
-        newHours: a.hours,
-        engagementName: existing.engagement.name,
-        weekStart: a.weekStart,
-        consultantName: a.consultantName,
-      });
-    }
+    upsertedAssignments++;
   }
 
   // ── 4. Ausencias ──────────────────────────────────────────────────────────
-  let newAbsences = 0;
-  let updatedAbsences = 0;
+  let upsertedAbsences = 0;
 
   for (const a of data.absences) {
     const consultantId = consultantIdMap.get(a.consultantName);
     if (!consultantId) continue;
     const weekStart = new Date(a.weekStart);
 
-    const existing = await prisma.absence.findUnique({
+    await prisma.absence.upsert({
       where: { consultantId_weekStart: { consultantId, weekStart } },
+      create: { consultantId, weekStart, hours: a.hours },
+      update: { hours: a.hours },
     });
-    if (!existing) {
-      await prisma.absence.create({ data: { consultantId, weekStart, hours: a.hours } });
-      newAbsences++;
-    } else if (Math.abs(existing.hours - a.hours) > 0.05) {
-      await prisma.absence.update({ where: { id: existing.id }, data: { hours: a.hours } });
-      updatedAbsences++;
-    }
+    upsertedAbsences++;
   }
 
   // ── 5. Audit log ──────────────────────────────────────────────────────────
-  // Registro individual por cada asignación modificada
-  for (const u of updatedAssignments) {
-    await prisma.auditLog.create({
-      data: {
-        userId: admin.id,
-        action: "UPDATE",
-        entity: "Assignment",
-        entityId: u.id,
-        details: JSON.stringify({
-          consultantName: u.consultantName,
-          engagementName: u.engagementName,
-          weekStart: u.weekStart,
-          oldHours: u.oldHours,
-          newHours: u.newHours,
-          source: "import",
-        }),
-      },
-    });
-  }
-
   // Registro resumen de la importación
   await prisma.auditLog.create({
     data: {
@@ -139,12 +101,8 @@ export async function confirmImport(formData: FormData): Promise<void> {
       entityId: id,
       details: JSON.stringify({
         filename: pending.filename,
-        newConsultants: data.consultants.filter((c) => !consultantIdMap.has(c.name)).length,
-        newEngagements: data.engagements.filter((e) => !engagementIdByClientKey.has(e.clientKey)).length,
-        newAssignments,
-        updatedAssignments: updatedAssignments.length,
-        newAbsences,
-        updatedAbsences,
+        upsertedAssignments,
+        upsertedAbsences,
       }),
     },
   });
